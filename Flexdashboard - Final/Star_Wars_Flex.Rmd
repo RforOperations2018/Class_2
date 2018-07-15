@@ -1,0 +1,111 @@
+---
+title: "Starwars Flex Dashboard"
+runtime: shiny
+output: 
+  flexdashboard::flex_dashboard:
+    orientation: row
+    vertical_layout: fill
+    theme: sandstone
+    favicon: favicon.ico
+---
+
+```{r setup, include=FALSE}
+library(flexdashboard)
+library(shiny)
+library(dplyr)
+library(plotly)
+
+pdf(NULL)
+
+starwars <- starwars
+starwars$films <- as.character(starwars$films)
+starwars$vehicles <- as.character(starwars$vehicles)
+starwars$starships <- as.character(starwars$starships)
+starwars$name <- as.factor(starwars$name)
+```
+
+Sidebar {.sidebar}
+=====================================
+
+```{r}
+selectInput("char_select",
+            "Characters:",
+            choices = levels(starwars$name),
+            multiple = TRUE,
+            selectize = TRUE,
+            selected = c("Luke Skywalker", "Darth Vader", "Jabba Desilijic Tiure", "Obi-Wan Kenobi", "R2-D2", "Dexter Jettster"))
+
+```
+
+Plot
+=====================================
+
+Row 
+-------------------------------------
+
+###
+
+```{r}
+renderValueBox({
+    sw <- subset(starwars, name %in% input$char_select)
+    num <- round(mean(sw$mass, na.rm = T), 2)
+    
+    valueBox(caption = "Avg Mass", value = num, icon = "fa-balance-scale", color = "info")
+})
+```
+
+###
+
+```{r}
+renderValueBox({
+  sw <- subset(starwars, name %in% input$char_select)
+  num <- round(mean(sw$height, na.rm = T), 2)
+    
+  valueBox(caption = "Avg Height", value = num, icon = "fa-sort-numeric-asc", color = "success")
+})
+```
+
+### Characters Selected
+
+```{r}
+renderGauge({
+  rate <- round(as.numeric(length(input$char_select)) / nrow(starwars) * 100, 1)
+  gauge(rate, min = 0, max = 100, symbol = '%', gaugeSectors(
+  success = c(80, 100), warning = c(40, 79), danger = c(0, 39)))
+})
+```
+
+Row {.tabset .tabset-fade}
+-------------------------------------
+
+### Mass
+
+```{r}
+renderPlotly({
+    dat <- subset(starwars, name %in% input$char_select)
+    ggplot(data = dat, aes(x = name, y = mass, fill = name)) + geom_bar(stat = "identity")
+  })
+```
+
+### Height
+
+```{r}
+renderPlotly({
+    dat <- subset(starwars, name %in% input$char_select)
+    ggplot(data = dat, aes(x = name, y = height, fill = name)) + geom_bar(stat = "identity")
+  })
+```
+
+Table
+=====================================
+
+Row 
+-------------------------------------
+
+### Table 
+
+```{r}
+DT::renderDataTable({
+    subset(starwars, name %in% input$char_select, select = c(name, height, mass, birth_year, homeworld, species))
+})
+```
