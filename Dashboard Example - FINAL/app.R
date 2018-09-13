@@ -71,7 +71,8 @@ body <- dashboardBody(tabItems(
           fluidPage(
             box(title = "Selected Character Stats", DT::dataTableOutput("table"), width = 12))
           )
-))
+  )
+)
 
 ui <- dashboardPage(header, sidebar, body)
 
@@ -93,23 +94,28 @@ server <- function(input, output) {
     swInput() %>%
       melt(id = "name")
   })
+  # A plot showing the mass of characters
   output$plot_mass <- renderPlotly({
     dat <- subset(mwInput(), variable == "mass")
     ggplot(data = dat, aes(x = name, y = as.numeric(value), fill = name)) + geom_bar(stat = "identity")
   })
+  # A plot showing the height of characters
   output$plot_height <- renderPlotly({
     dat <- subset(mwInput(),  variable == "height")
     ggplot(data = dat, aes(x = name, y = as.numeric(value), fill = name)) + geom_bar(stat = "identity")
   })
+  # Data table of characters
   output$table <- DT::renderDataTable({
-    subset(swInput(), select = c(name, height, mass, birth_year, homeworld, species))
+    subset(swInput(), select = c(name, height, mass, birth_year, homeworld, species, films))
   })
+  # Mass mean info box
   output$mass <- renderInfoBox({
     sw <- swInput()
     num <- round(mean(sw$mass, na.rm = T), 2)
     
     infoBox("Avg Mass", value = num, subtitle = paste(nrow(sw), "characters"), icon = icon("balance-scale"), color = "purple")
   })
+  # Height mean value box
   output$height <- renderValueBox({
     sw <- swInput()
     num <- round(mean(sw$height, na.rm = T), 2)
