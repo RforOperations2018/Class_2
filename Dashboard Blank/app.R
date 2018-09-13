@@ -16,19 +16,48 @@ starwars.load <- starwars %>%
 
 pdf(NULL)
 
-header <- dashboardHeader(title = "Star Wars Dashboard",
-
+header <- dashboardHeader(title = "Star Wars Dashboard"
                         )
 
 sidebar <- dashboardSidebar(
   sidebarMenu(
    id = "tabs",
+   menuItem("Plot", tabName = "plot", icon = icon("bar-chart")),
+   menuItem("Table", tabName = "table", icon = icon("table"), badgeLabel = "cool", badgeColor = "blue"),
+   selectInput("worldSelect",
+               "Homeworld:",
+               choices = sort(unique(starwars.load$homeworld)),
+               multiple = TRUE,
+               selectize = TRUE,
+               selected = c("Naboo", "Tatooine")),
+   # Birth Selection
+   sliderInput("birthSelect",
+               "Birth Year:",
+               min = min(starwars.load$birth_year, na.rm = T),
+               max = max(starwars.load$birth_year, na.rm = T),
+               value = c(min(starwars.load$birth_year, na.rm = T), max(starwars.load$birth_year, na.rm = T)),
+               step = 1)
 
   )
 )
 
 body <- dashboardBody(
   tabItems(
+    tabItem("plot",
+            fluidRow(
+              infoBoxOutput("mass"),
+              valueBoxOutput("height")
+            ),
+            fluidRow(
+              tabBox("Plots",
+                     tabPanel("Height", plotlyOutput("plot_height")),
+                     tabPanel("Mass", plotlyOutput("plot_mass")))
+            )
+            ),
+    tabItem("table",
+            box(DT::dataTableOutput("table"), width = 12)
+            
+            )
     
   )
 )
@@ -62,7 +91,7 @@ server <- function(input, output) {
     ggplot(data = dat, aes(x = name, y = as.numeric(value), fill = name)) + geom_bar(stat = "identity")
   })
   output$table <- DT::renderDataTable({
-    subset(swInput, name %in% input$char_select, select = c(name, height, mass, birth_year, homeworld, species))
+    subset(swInput(), select = c(name, height, mass, birth_year, homeworld, species))
   })
   output$mass <- renderInfoBox({
     sw <- swInput()
