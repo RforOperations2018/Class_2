@@ -1,4 +1,4 @@
-# Class 2
+# Class 6
 # Shiny Dashboard Example
 
 library(shiny)
@@ -8,12 +8,11 @@ library(dplyr)
 library(plotly)
 library(shinythemes)
 
-starwars <- starwars
-starwars$films <- NULL
-starwars$vehicles <- NULL
-starwars$starships <- NULL
-meltwars <- melt(starwars, id = "name")
-meltwars$name <- as.factor(meltwars$name)
+starwars.load <- starwars %>%
+  mutate(films = as.character(films),
+         vehicles = as.character(vehicles),
+         starships = as.character(starships),
+         name = as.factor(name))
 
 pdf(NULL)
 
@@ -39,12 +38,19 @@ sidebar <- dashboardSidebar(
    id = "tabs",
    menuItem("Plot", icon = icon("bar-chart"), tabName = "plot"),
    menuItem("Table", icon = icon("table"), tabName = "table", badgeLabel = "new", badgeColor = "green"),
-   selectInput("char_select",
-               "Characters:",
-               choices = levels(meltwars$name),
+   selectInput("worldSelect",
+               "Homeworld:",
+               choices = sort(unique(starwars.load$homeworld)),
                multiple = TRUE,
                selectize = TRUE,
-               selected = c("Luke Skywalker", "Darth Vader", "Jabba Desilijic Tiure", "Obi-Wan Kenobi", "R2-D2", "Dexter Jettster"))
+               selected = c("Naboo", "Tatooine")),
+   # Birth Selection
+   sliderInput("birthSelect",
+               "Birth Year:",
+               min = min(starwars.load$birth_year, na.rm = T),
+               max = max(starwars.load$birth_year, na.rm = T),
+               value = c(min(starwars.load$birth_year, na.rm = T), max(starwars.load$birth_year, na.rm = T)),
+               step = 1)
   )
 )
 
@@ -71,25 +77,41 @@ ui <- dashboardPage(header, sidebar, body)
 
 # Define server logic
 server <- function(input, output) {
+  swInput <- reactive({
+    starwars <- starwars.load %>%
+      # Slider Filter
+      filter(birth_year >= input$birthSelect[1] & birth_year <= input$birthSelect[2])
+    # Homeworld Filter
+    if (length(input$worldSelect) > 0 ) {
+      starwars <- subset(starwars, homeworld %in% input$worldSelect)
+    }
+    
+    return(starwars)
+  })
+  # Reactive melted data
+  mwInput <- reactive({
+    swInput() %>%
+      melt(id = "name")
+  })
   output$plot_mass <- renderPlotly({
-    dat <- subset(meltwars, name %in% input$char_select & variable == "mass")
+    dat <- subset(mwInput(), variable == "mass")
     ggplot(data = dat, aes(x = name, y = as.numeric(value), fill = name)) + geom_bar(stat = "identity")
   })
   output$plot_height <- renderPlotly({
-    dat <- subset(meltwars, name %in% input$char_select & variable == "height")
+    dat <- subset(mwInput(),  variable == "height")
     ggplot(data = dat, aes(x = name, y = as.numeric(value), fill = name)) + geom_bar(stat = "identity")
   })
   output$table <- DT::renderDataTable({
-    subset(starwars, name %in% input$char_select, select = c(name, height, mass, birth_year, homeworld, species))
+    subset(swInput(), select = c(name, height, mass, birth_year, homeworld, species))
   })
   output$mass <- renderInfoBox({
-    sw <- subset(starwars, name %in% input$char_select)
+    sw <- swInput()
     num <- round(mean(sw$mass, na.rm = T), 2)
     
     infoBox("Avg Mass", value = num, subtitle = paste(nrow(sw), "characters"), icon = icon("balance-scale"), color = "purple")
   })
   output$height <- renderValueBox({
-    sw <- subset(starwars, name %in% input$char_select)
+    sw <- swInput()
     num <- round(mean(sw$height, na.rm = T), 2)
     
     valueBox(subtitle = "Avg Height", value = num, icon = icon("sort-numeric-asc"), color = "green")

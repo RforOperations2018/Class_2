@@ -12,29 +12,53 @@ output:
 ```{r setup, include=FALSE}
 library(flexdashboard)
 library(shiny)
+library(reshape2)
 library(dplyr)
 library(plotly)
 
 pdf(NULL)
 
-starwars <- starwars
-starwars$films <- as.character(starwars$films)
-starwars$vehicles <- as.character(starwars$vehicles)
-starwars$starships <- as.character(starwars$starships)
-starwars$name <- as.factor(starwars$name)
+starwars.load <- starwars %>%
+  mutate(films = as.character(films),
+         vehicles = as.character(vehicles),
+         starships = as.character(starships),
+         name = as.factor(name))
+
+swInput <- reactive({
+  starwars <- starwars.load %>%
+    # Slider Filter
+    filter(birth_year >= input$birthSelect[1] & birth_year <= input$birthSelect[2])
+  # Homeworld Filter
+  if (length(input$worldSelect) > 0 ) {
+    starwars <- subset(starwars, homeworld %in% input$worldSelect)
+  }
+  
+  return(starwars)
+})
+# Reactive melted data
+mwInput <- reactive({
+  swInput() %>%
+    melt(id = "name")
+})
 ```
 
 Sidebar {.sidebar}
 =====================================
 
 ```{r}
-selectInput("char_select",
-            "Characters:",
-            choices = levels(starwars$name),
-            multiple = TRUE,
-            selectize = TRUE,
-            selected = c("Luke Skywalker", "Darth Vader", "Jabba Desilijic Tiure", "Obi-Wan Kenobi", "R2-D2", "Dexter Jettster"))
-
+selectInput("worldSelect",
+               "Homeworld:",
+               choices = sort(unique(starwars.load$homeworld)),
+               multiple = TRUE,
+               selectize = TRUE,
+               selected = c("Naboo", "Tatooine"))
+   # Birth Selection
+   sliderInput("birthSelect",
+               "Birth Year:",
+               min = min(starwars.load$birth_year, na.rm = T),
+               max = max(starwars.load$birth_year, na.rm = T),
+               value = c(min(starwars.load$birth_year, na.rm = T), max(starwars.load$birth_year, na.rm = T)),
+               step = 1)
 ```
 
 Plot
@@ -47,10 +71,10 @@ Row
 
 ```{r}
 renderValueBox({
-    sw <- subset(starwars, name %in% input$char_select)
-    num <- round(mean(sw$mass, na.rm = T), 2)
-    
-    valueBox(caption = "Avg Mass", value = num, icon = "fa-balance-scale", color = "info")
+  sw <- swInput()
+  num <- round(mean(sw$mass, na.rm = T), 2)
+  
+  valueBox("Avg Mass", value = num, icon = "fa-balance-scale", color = "purple")
 })
 ```
 
@@ -58,18 +82,18 @@ renderValueBox({
 
 ```{r}
 renderValueBox({
-  sw <- subset(starwars, name %in% input$char_select)
+  sw <- swInput()
   num <- round(mean(sw$height, na.rm = T), 2)
-    
-  valueBox(caption = "Avg Height", value = num, icon = "fa-sort-numeric-asc", color = "success")
+  
+  valueBox("Avg Height", value = num, icon = "fa-sort-numeric-asc", color = "green")
 })
 ```
 
-### Characters Selected
+### Worlds Selected
 
 ```{r}
 renderGauge({
-  rate <- round(as.numeric(length(input$char_select)) / nrow(starwars) * 100, 1)
+  rate <- round(as.numeric(length(input$worldSelect)) / length(unique(starwars.load$homeworld)) * 100, 1)
   gauge(rate, min = 0, max = 100, symbol = '%', gaugeSectors(
   success = c(80, 100), warning = c(40, 79), danger = c(0, 39)))
 })
@@ -82,18 +106,18 @@ Row {.tabset .tabset-fade}
 
 ```{r}
 renderPlotly({
-    dat <- subset(starwars, name %in% input$char_select)
-    ggplot(data = dat, aes(x = name, y = mass, fill = name)) + geom_bar(stat = "identity")
-  })
+  dat <- subset(mwInput(), variable == "mass")
+  ggplot(data = dat, aes(x = name, y = as.numeric(value), fill = name)) + geom_bar(stat = "identity")
+})
 ```
 
 ### Height
 
 ```{r}
 renderPlotly({
-    dat <- subset(starwars, name %in% input$char_select)
-    ggplot(data = dat, aes(x = name, y = height, fill = name)) + geom_bar(stat = "identity")
-  })
+  dat <- subset(mwInput(),  variable == "height")
+  ggplot(data = dat, aes(x = name, y = as.numeric(value), fill = name)) + geom_bar(stat = "identity")
+})
 ```
 
 Table
@@ -106,6 +130,6 @@ Row
 
 ```{r}
 DT::renderDataTable({
-    subset(starwars, name %in% input$char_select, select = c(name, height, mass, birth_year, homeworld, species))
+  subset(swInput(), select = c(name, height, mass, birth_year, homeworld, species))
 })
 ```
