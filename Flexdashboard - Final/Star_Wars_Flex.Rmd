@@ -42,8 +42,11 @@ mwInput <- reactive({
 })
 ```
 
-Sidebar {.sidebar}
+Plot
 =====================================
+
+Sidebar {.sidebar}
+-------------------------------------
 
 ```{r}
 selectInput("worldSelect",
@@ -60,9 +63,6 @@ selectInput("worldSelect",
                value = c(min(starwars.load$birth_year, na.rm = T), max(starwars.load$birth_year, na.rm = T)),
                step = 1)
 ```
-
-Plot
-=====================================
 
 Row 
 -------------------------------------
@@ -85,7 +85,7 @@ renderValueBox({
   sw <- swInput()
   num <- round(mean(sw$height, na.rm = T), 2)
   
-  valueBox("Avg Height", value = num, icon = "fa-sort-numeric-asc", color = "green")
+  valueBox("Avg Height", value = num, icon = "fa-sort-numeric-desc", color = "green")
 })
 ```
 
@@ -132,4 +132,21 @@ Row
 DT::renderDataTable({
   subset(swInput(), select = c(name, height, mass, birth_year, homeworld, species))
 })
+```
+
+Row 
+-------------------------------------
+
+```{r}
+library(shiny)
+
+ui <- fluidPage(
+  
+)
+
+server <- function(input, output, session) {
+  
+}
+
+shinyApp(ui, server)
 ```
