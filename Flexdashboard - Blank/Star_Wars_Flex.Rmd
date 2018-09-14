@@ -25,6 +25,7 @@ starwars.load <- starwars %>%
          name = as.factor(name))
 
 swInput <- reactive({
+  
   starwars <- starwars.load %>%
     # Slider Filter
     filter(birth_year >= input$birthSelect[1] & birth_year <= input$birthSelect[2])
@@ -46,10 +47,22 @@ Sidebar {.sidebar}
 =====================================
 
 ```{r}
-
+selectInput("worldSelect",
+               "Homeworld:",
+               choices = sort(unique(starwars.load$homeworld)),
+               multiple = TRUE,
+               selectize = TRUE,
+               selected = c("Naboo", "Tatooine"))
+   # Birth Selection
+   sliderInput("birthSelect",
+               "Birth Year:",
+               min = min(starwars.load$birth_year, na.rm = T),
+               max = max(starwars.load$birth_year, na.rm = T),
+               value = c(min(starwars.load$birth_year, na.rm = T), max(starwars.load$birth_year, na.rm = T)),
+               step = 1)
 ```
 
-Plot
+Plots
 =====================================
 
 Row 
@@ -58,7 +71,9 @@ Row
 ###
 
 ```{r}
-
+renderValueBox({
+  
+})
 ```
 
 ###
